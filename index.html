@@ -120,12 +120,15 @@
   }
 
   /* ---- Play/pause + seek bar, shown right under the video once
-     the movie itself starts playing ---- */
+     the movie itself starts playing. Button sits centered directly
+     above the bar (not off to the side) so it can't end up hidden
+     behind the rocking-chair PIP over on the left edge. ---- */
   .movie-controls {
     display: none;
+    flex-direction: column;
     align-items: center;
-    gap: 3%;
-    padding: 1.2vh 4% 0.4vh;
+    gap: 0.6vh;
+    padding: 1vh 6% 0.6vh;
     flex-shrink: 0;
   }
   .movie-controls.visible { display: flex; }
@@ -147,7 +150,7 @@
     box-shadow: 0 3px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.35);
   }
   .seek-bar {
-    flex: 1;
+    width: 100%;
     height: 6px;
     accent-color: #2c5aa0;
     cursor: pointer;
@@ -233,6 +236,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     font-size: clamp(1.3rem, 2.3vw, 1.9rem);
     background: radial-gradient(circle at 35% 30%, #ffffff, #e9e9e9 70%, #cfcfcf);
     box-shadow:
@@ -241,6 +245,11 @@
       inset 0 2px 3px rgba(255,255,255,0.85);
     border: 2px solid #d8b45a;
     transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+  }
+  .lang-flag-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
   .lang-flag-btn:hover .lang-flag-circle { transform: translateY(-2px) scale(1.05); }
   .lang-flag-btn.selected .lang-flag-circle {
@@ -498,15 +507,15 @@
     const ROCKING_CHAIR_LEAD_TIME = 1;
 
     const LANGUAGES = [
-      { code: 'en', name: 'English', rtl: false, flag: '🇬🇧' },
-      { code: 'fr', name: 'Français', rtl: false, flag: '🇫🇷' },
-      { code: 'ru', name: 'Русский', rtl: false, flag: '🇷🇺' },
-      { code: 'ro', name: 'Română', rtl: false, flag: '🇷🇴' },
-      { code: 'hu', name: 'Magyar', rtl: false, flag: '🇭🇺' },
-      { code: 'es', name: 'Español', rtl: false, flag: '🇪🇸' },
-      { code: 'de', name: 'Deutsch', rtl: false, flag: '🇩🇪' },
-      { code: 'fa', name: 'فارسی', rtl: true, flag: '🇮🇷' },
-      { code: 'zh', name: '中文', rtl: false, flag: '🇨🇳' }
+      { code: 'en', name: 'English', rtl: false, flagImg: 'assets/flag-canada.jpg' },
+      { code: 'fr', name: 'Français', rtl: false, flagImg: 'assets/flag-france.jpg' },
+      { code: 'ru', name: 'Русский', rtl: false, flagImg: 'assets/flag-russia.jpg' },
+      { code: 'ro', name: 'Română', rtl: false, flagImg: 'assets/flag-romania.jpg' },
+      { code: 'hu', name: 'Magyar', rtl: false, flagImg: 'assets/flag-hungary.jpg' },
+      { code: 'es', name: 'Español', rtl: false, flagImg: 'assets/flag-spain.jpg' },
+      { code: 'de', name: 'Deutsch', rtl: false, flagImg: 'assets/flag-germany.jpg' },
+      { code: 'fa', name: 'فارسی', rtl: true, flagImg: 'assets/flag-iran.jpg' },
+      { code: 'zh', name: '中文', rtl: false, flagImg: 'assets/flag-china.jpg' }
     ];
     const PICKER_VIDEO = 'assets/click-right.mp4';
 
@@ -620,7 +629,8 @@
         btn.dataset.code = lang.code;
         btn.onclick = () => onToggleLanguage(lang.code);
         btn.innerHTML =
-          '<span class="lang-flag-circle">' + lang.flag + '<span class="lang-flag-check">✓</span></span>' +
+          '<span class="lang-flag-circle"><img src="' + lang.flagImg + '" alt="' + lang.name + ' flag">' +
+          '<span class="lang-flag-check">✓</span></span>' +
           '<span class="lang-flag-name">' + lang.name + '</span>';
         languageFlagsGrid.appendChild(btn);
       });
