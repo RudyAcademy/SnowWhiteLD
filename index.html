@@ -534,6 +534,57 @@
     let currentSegmentIndex = -1;
     let seekBarDragging = false;
 
+    // Seek bar spans the whole movie (Leg 1 start -> Leg 5 end), not
+    // just the leg currently playing. Each leg's duration is fetched
+    // via a throwaway <video preload="metadata"> probe (a small HTTP
+    // range request, not a full download) so the combined timeline is
+    // known before playback even starts.
+    let legDurations = new Array(LEGS.length).fill(0);
+    let legOffsets = new Array(LEGS.length).fill(0);
+    let totalDuration = 0;
+    let durationsReady = false;
+    let pendingSeekLocalTime = null;
+
+    function preloadLegDurations() {
+      let loadedCount = 0;
+      LEGS.forEach((leg, i) => {
+        const probe = document.createElement('video');
+        probe.preload = 'metadata';
+        probe.src = leg.video;
+        probe.addEventListener('loadedmetadata', () => {
+          legDurations[i] = probe.duration;
+          loadedCount++;
+          if (loadedCount === LEGS.length) finalizeLegOffsets();
+        });
+        probe.load();
+      });
+    }
+
+    function finalizeLegOffsets() {
+      let acc = 0;
+      legOffsets = legDurations.map(d => { const offset = acc; acc += d; return offset; });
+      totalDuration = acc;
+      durationsReady = true;
+    }
+
+    // Jumping across legs when the user drags the seek bar past the
+    // current leg's own end/start.
+    function seekToGlobalTime(t) {
+      t = Math.max(0, Math.min(t, totalDuration - 0.05));
+      let targetLeg = LEGS.length - 1;
+      for (let i = 0; i < LEGS.length; i++) {
+        if (t < legOffsets[i] + legDurations[i]) { targetLeg = i; break; }
+      }
+      const localTime = Math.max(0, t - legOffsets[targetLeg]);
+      if (targetLeg === legIndex) {
+        legVideo.currentTime = localTime;
+      } else {
+        pendingSeekLocalTime = localTime;
+        legIndex = targetLeg;
+        playLeg(legIndex);
+      }
+    }
+
     function playWithFallback(video) {
       const p = video.play();
       if (p && typeof p.catch === 'function') {
@@ -629,6 +680,16 @@
       legVideo.removeEventListener('ended', onLegEndedHandler);
       legVideo.src = leg.video;
       legVideo.load();
+
+      if (pendingSeekLocalTime !== null) {
+        const target = pendingSeekLocalTime;
+        pendingSeekLocalTime = null;
+        legVideo.addEventListener('loadedmetadata', function applyPendingSeek() {
+          legVideo.currentTime = target;
+          legVideo.removeEventListener('loadedmetadata', applyPendingSeek);
+        });
+      }
+
       playWithFallback(legVideo);
       legVideo.addEventListener('timeupdate', onLegTimeUpdate);
       legVideo.addEventListener('ended', onLegEndedHandler, { once: true });
@@ -651,8 +712,15 @@
         currentSegmentIndex = idx;
         updateCaptions(idx >= 0 ? currentSegments[idx] : null);
       }
-      if (!seekBarDragging && legVideo.duration) {
-        seekBar.value = (t / legVideo.duration) * 1000;
+      if (!seekBarDragging) {
+        if (durationsReady && totalDuration > 0) {
+          const globalTime = legOffsets[legIndex] + t;
+          seekBar.value = (globalTime / totalDuration) * 1000;
+        } else if (legVideo.duration) {
+          // Rare: durations still loading — fall back to this leg's
+          // own fraction so the bar isn't just stuck at 0.
+          seekBar.value = (t / legVideo.duration) * 1000;
+        }
       }
     }
 
@@ -705,11 +773,15 @@
       legVideo.addEventListener('pause', () => { playPauseBtn.textContent = '▶'; });
       seekBar.addEventListener('input', () => { seekBarDragging = true; });
       seekBar.addEventListener('change', () => {
-        if (legVideo.duration) {
+        if (durationsReady && totalDuration > 0) {
+          seekToGlobalTime((seekBar.value / 1000) * totalDuration);
+        } else if (legVideo.duration) {
           legVideo.currentTime = (seekBar.value / 1000) * legVideo.duration;
         }
         seekBarDragging = false;
       });
+
+      preloadLegDurations();
 
       rockingChairVideo.src = ROCKING_CHAIR_VIDEO;
       pickerVideo.src = PICKER_VIDEO;
