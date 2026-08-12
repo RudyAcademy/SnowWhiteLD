@@ -162,6 +162,7 @@
   .vpf-text-col {
     flex: 1;
     min-width: 0;
+    min-height: 0;
     height: 100%;
     position: relative;
     display: flex;
@@ -198,9 +199,13 @@
   .caption-half.rtl .caption-text { font-style: normal; font-family: Tahoma, Arial, sans-serif; }
 
   /* ---- Language picker — shown in the text column before the
-     movie starts. ---- */
+     movie starts. min-height:0 + overflow-y:auto so on short/narrow
+     screens the content scrolls instead of being sliced off by the
+     frame's overflow:hidden (that's what made the Start button
+     disappear on phones — it was still there, just clipped away). ---- */
   .language-picker {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -208,6 +213,7 @@
     gap: 2.4vh;
     padding: 4% 6%;
     text-align: center;
+    overflow-y: auto;
   }
   .language-picker h2 {
     font-family: "Cooper Black", "Fredoka One", sans-serif;
@@ -306,6 +312,7 @@
   /* ---- The End screen ---- */
   .the-end {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -313,6 +320,7 @@
     gap: 2.4vh;
     text-align: center;
     padding: 4%;
+    overflow-y: auto;
   }
   .the-end h2 {
     font-family: "Playfair Display", Georgia, serif;
@@ -412,8 +420,14 @@
 
   @media (max-width: 700px) {
     .vpf-inner { flex-direction: column; }
-    .vpf-video-col { width: 100%; height: 55%; }
+    .vpf-video-col { width: 100%; height: 38%; }
     .vpf-text-col { border-left: none; border-top: 2px solid #eee; }
+    .language-picker { gap: 1.4vh; padding: 3% 5%; }
+    .language-picker h2 { font-size: clamp(0.95rem, 4vw, 1.3rem); }
+    .language-flags-grid { gap: 1.2vh 3vw; }
+    .lang-flag-circle { width: clamp(38px, 11vw, 54px); height: clamp(38px, 11vw, 54px); }
+    .lang-flag-name { font-size: clamp(0.56rem, 2.6vw, 0.7rem); }
+    .start-movie-btn { padding: 1.2vh 6vw; }
   }
 </style>
 </head>
