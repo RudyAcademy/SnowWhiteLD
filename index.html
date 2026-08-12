@@ -119,17 +119,21 @@
     background: #ffffff;
   }
 
-  /* ---- Play/pause + seek bar, shown right under the video once
-     the movie itself starts playing. Button sits centered directly
-     above the bar (not off to the side) so it can't end up hidden
-     behind the rocking-chair PIP over on the left edge. ---- */
+  /* ---- Play/pause + seek bar, shown once the movie itself starts
+     playing. Sits directly on the frame's own bottom border line (a
+     sibling of .vpf-frame, not nested inside it) with a z-index above
+     the rocking-chair PIP, so the chair can never sit on top of it. ---- */
   .movie-controls {
     display: none;
+    position: absolute;
+    left: 6%;
+    right: 6%;
+    bottom: 3%;
+    transform: translateY(50%);
     flex-direction: column;
     align-items: center;
     gap: 0.6vh;
-    padding: 1vh 6% 0.6vh;
-    flex-shrink: 0;
+    z-index: 15;
   }
   .movie-controls.visible { display: flex; }
   .control-play-btn {
@@ -432,10 +436,6 @@
             <video id="pickerVideo" muted loop playsinline></video>
             <video id="legVideo" playsinline style="display:none"></video>
           </div>
-          <div class="movie-controls" id="movieControls">
-            <button class="control-play-btn" id="playPauseBtn" onclick="onTogglePlayPause()">⏸</button>
-            <input type="range" class="seek-bar" id="seekBar" min="0" max="1000" value="0">
-          </div>
         </div>
         <div class="vpf-text-col" id="textCol">
           <div class="language-picker" id="languagePicker">
@@ -488,6 +488,11 @@
           <path d="M18,60 C24,54 30,54 33,60" fill="none" stroke="url(#cg)" stroke-width="3.5" stroke-linecap="round"/>
         </svg>
       </div>
+    </div>
+
+    <div class="movie-controls" id="movieControls">
+      <button class="control-play-btn" id="playPauseBtn" onclick="onTogglePlayPause()">⏸</button>
+      <input type="range" class="seek-bar" id="seekBar" min="0" max="1000" value="0">
     </div>
 
     <div class="rocking-chair-container" id="rockingChairContainer">
