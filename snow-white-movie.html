@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snow White - Learning Dragon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  .title-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1.8vh 2.2vw;
+    background: #f8f9fa;
+    border-bottom: 3px solid #ddd;
+    flex-shrink: 0;
+    z-index: 20;
+  }
+  .title {
+    font-family: "Cooper Black", "Fredoka One", sans-serif;
+    font-size: clamp(1.6rem, 4vw, 3.2rem);
+    color: #2c5aa0;
+    margin: 0;
+  }
+
+  .stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    background: #ffffff;
+    overflow: hidden;
+  }
+
+  /* ---- Intro video ("once upon a time...") ---- */
+  .intro-video-wrap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.6s ease;
+  }
+  .intro-video-wrap.hidden { opacity: 0; pointer-events: none; }
+  .intro-video-wrap video {
+    width: 62%;
+    max-height: 82%;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    background: #000;
+  }
+
+  /* ---- VPF (Video Playing Frame) — ornate storybook frame, same
+     visual language as story-engine.html ---- */
+  .vpf-frame {
+    position: absolute;
+    inset: 3%;
+    border-radius: 22px;
+    padding: clamp(12px, 2vw, 26px);
+    background:
+      linear-gradient(#241608, #241608) padding-box,
+      linear-gradient(135deg, #f7e199, #b8860b 30%, #6e4d16 55%, #b8860b 78%, #f7e199) border-box;
+    border: clamp(10px, 1.5vw, 20px) solid transparent;
+    box-shadow:
+      0 0 0 3px rgba(255, 221, 140, 0.35),
+      inset 0 0 30px rgba(0, 0, 0, 0.6),
+      0 24px 70px rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.92);
+    transition: opacity 0.9s ease, transform 0.9s ease;
+    z-index: 5;
+  }
+  .vpf-frame.visible { opacity: 1; pointer-events: auto; transform: scale(1); }
+  .vpf-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #ffffff;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+  }
+  .vpf-video-col {
+    width: 55%;
+    height: 100%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+  }
+  .vpf-video-col video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #ffffff;
+  }
+  .vpf-text-col {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border-left: 2px solid #eee;
+  }
+
+  /* ---- Caption panel(s) — single language fills the whole text
+     column; dual language splits it top/bottom, each independently
+     RTL-aware for Farsi. ---- */
+  .caption-half {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4% 5%;
+    overflow-y: auto;
+    text-align: left;
+  }
+  .caption-half.rtl { text-align: right; direction: rtl; }
+  .caption-half + .caption-half { border-top: 2px solid #eee; }
+  .caption-text {
+    font-family: "Playfair Display", Georgia, serif;
+    font-style: italic;
+    font-size: clamp(1.1rem, 2vw, 1.7rem);
+    line-height: 1.45;
+    color: #333;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .caption-text.visible { opacity: 1; }
+  /* Farsi's own font renders more legibly upright than italic */
+  .caption-half.rtl .caption-text { font-style: normal; font-family: Tahoma, Arial, sans-serif; }
+
+  /* ---- Language picker — shown in the text column before the
+     movie starts. ---- */
+  .language-picker {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.4vh;
+    padding: 4% 6%;
+    text-align: center;
+  }
+  .language-picker h2 {
+    font-family: "Cooper Black", "Fredoka One", sans-serif;
+    font-size: clamp(1.1rem, 2vw, 1.6rem);
+    color: #2c5aa0;
+    margin: 0;
+  }
+  .language-picker-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6vh;
+    width: 100%;
+    max-width: 320px;
+  }
+  .language-picker-row label {
+    font-size: clamp(0.85rem, 1.3vw, 1rem);
+    color: #555;
+    font-weight: bold;
+  }
+  .language-picker-row select {
+    width: 100%;
+    padding: 1.1vh 0.8vw;
+    font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    background: white;
+    color: #333;
+  }
+  .start-movie-btn {
+    padding: 1.6vh 3vw;
+    font-family: "Cooper Black", "Fredoka One", sans-serif;
+    font-size: clamp(1rem, 1.6vw, 1.3rem);
+    color: white;
+    background: linear-gradient(135deg, #4a90d9, #2c5aa0);
+    border: none;
+    border-bottom: 6px solid #1c3f73;
+    border-radius: 16px;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.35);
+    transition: transform 0.15s;
+  }
+  .start-movie-btn:hover { transform: scale(1.05); }
+  .start-movie-btn:active { transform: scale(0.95); }
+
+  /* ---- The End screen ---- */
+  .the-end {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2.4vh;
+    text-align: center;
+    padding: 4%;
+  }
+  .the-end h2 {
+    font-family: "Playfair Display", Georgia, serif;
+    font-style: italic;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    color: #2c5aa0;
+    margin: 0;
+  }
+
+  /* Corner flourishes */
+  .corner-ornament {
+    position: absolute;
+    width: clamp(38px, 5.5vw, 66px);
+    height: clamp(38px, 5.5vw, 66px);
+    pointer-events: none;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+  }
+  .corner-ornament svg { width: 100%; height: 100%; display: block; }
+  .corner-tl { top: -6%; left: -6%; }
+  .corner-tr { top: -6%; right: -6%; transform: scaleX(-1); }
+  .corner-bl { bottom: -6%; left: -6%; transform: scaleY(-1); }
+  .corner-br { bottom: -6%; right: -6%; transform: scale(-1, -1); }
+
+  /* ---- Rocking chair picture-in-picture ---- */
+  .rocking-chair-container {
+    position: absolute;
+    left: 2%;
+    bottom: 2%;
+    height: 18.75%;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #000;
+    box-shadow:
+      0 0 0 clamp(3px, 0.5vw, 6px) #b8860b,
+      0 0 0 clamp(5px, 0.8vw, 9px) #f7e199,
+      0 10px 26px rgba(0,0,0,0.55);
+    opacity: 0;
+    transform: scale(0.7);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    z-index: 10;
+  }
+  .rocking-chair-container.visible { opacity: 1; transform: scale(1); }
+  .rocking-chair-container video { width: 100%; height: 100%; object-fit: cover; }
+
+  /* ---- Autoplay-blocked fallback ---- */
+  .tap-to-start {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.6vh;
+    cursor: pointer;
+    z-index: 30;
+  }
+  .tap-to-start.visible { display: flex; }
+  .tap-to-start-btn {
+    width: clamp(80px, 12vw, 120px);
+    height: clamp(80px, 12vw, 120px);
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4a90d9, #2c5aa0);
+    color: white;
+    border: none;
+    border-bottom: 6px solid #1c3f73;
+    font-size: clamp(1.8rem, 3vw, 2.6rem);
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.35);
+  }
+  .tap-to-start-text {
+    color: white;
+    font-family: "Cooper Black", "Fredoka One", sans-serif;
+    font-size: 1.3rem;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.6);
+  }
+
+  @media (max-width: 700px) {
+    .vpf-inner { flex-direction: column; }
+    .vpf-video-col { width: 100%; height: 55%; }
+    .vpf-text-col { border-left: none; border-top: 2px solid #eee; }
+  }
+</style>
+</head>
+<body>
+  <div class="title-bar">
+    <div class="title">Snow White</div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="intro-video-wrap" id="introWrap">
+      <video id="introVideo" playsinline></video>
+    </div>
+
+    <div class="vpf-frame" id="vpfFrame">
+      <div class="vpf-inner">
+        <div class="vpf-video-col">
+          <video id="legVideo" playsinline></video>
+        </div>
+        <div class="vpf-text-col" id="textCol">
+          <div class="language-picker" id="languagePicker">
+            <h2>Choose one or two languages for the story text</h2>
+            <div class="language-picker-row">
+              <label for="lang1Select">Language 1</label>
+              <select id="lang1Select"></select>
+            </div>
+            <div class="language-picker-row">
+              <label for="lang2Select">Language 2 (optional)</label>
+              <select id="lang2Select"></select>
+            </div>
+            <button class="start-movie-btn" onclick="onStartMovie()">▶ Start the Movie</button>
+          </div>
+        </div>
+      </div>
+      <div class="corner-ornament corner-tl">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="cg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#f7e199"/>
+              <stop offset="0.5" stop-color="#b8860b"/>
+              <stop offset="1" stop-color="#f7e199"/>
+            </linearGradient>
+          </defs>
+          <path d="M6,94 C6,60 8,28 34,16 C48,10 62,14 66,24 C70,34 60,40 52,34 C46,29 47,20 56,15"
+                fill="none" stroke="url(#cg)" stroke-width="5" stroke-linecap="round"/>
+          <circle cx="14" cy="82" r="5" fill="url(#cg)"/>
+          <circle cx="63" cy="23" r="4" fill="url(#cg)"/>
+          <path d="M18,60 C24,54 30,54 33,60" fill="none" stroke="url(#cg)" stroke-width="3.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="corner-ornament corner-tr">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6,94 C6,60 8,28 34,16 C48,10 62,14 66,24 C70,34 60,40 52,34 C46,29 47,20 56,15"
+                fill="none" stroke="url(#cg)" stroke-width="5" stroke-linecap="round"/>
+          <circle cx="14" cy="82" r="5" fill="url(#cg)"/>
+          <circle cx="63" cy="23" r="4" fill="url(#cg)"/>
+          <path d="M18,60 C24,54 30,54 33,60" fill="none" stroke="url(#cg)" stroke-width="3.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="corner-ornament corner-bl">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6,94 C6,60 8,28 34,16 C48,10 62,14 66,24 C70,34 60,40 52,34 C46,29 47,20 56,15"
+                fill="none" stroke="url(#cg)" stroke-width="5" stroke-linecap="round"/>
+          <circle cx="14" cy="82" r="5" fill="url(#cg)"/>
+          <circle cx="63" cy="23" r="4" fill="url(#cg)"/>
+          <path d="M18,60 C24,54 30,54 33,60" fill="none" stroke="url(#cg)" stroke-width="3.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="corner-ornament corner-br">
+        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6,94 C6,60 8,28 34,16 C48,10 62,14 66,24 C70,34 60,40 52,34 C46,29 47,20 56,15"
+                fill="none" stroke="url(#cg)" stroke-width="5" stroke-linecap="round"/>
+          <circle cx="14" cy="82" r="5" fill="url(#cg)"/>
+          <circle cx="63" cy="23" r="4" fill="url(#cg)"/>
+          <path d="M18,60 C24,54 30,54 33,60" fill="none" stroke="url(#cg)" stroke-width="3.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="rocking-chair-container" id="rockingChairContainer">
+      <video id="rockingChairVideo" muted loop playsinline></video>
+    </div>
+
+    <div class="tap-to-start" id="tapToStart" onclick="onTapToStart()">
+      <button class="tap-to-start-btn">▶</button>
+      <div class="tap-to-start-text">Tap to begin!</div>
+    </div>
+  </div>
+
+  <script src="translations.js"></script>
+  <script>
+    const INTRO_VIDEO = 'assets/once-upon-a-time.mp4';
+    const ROCKING_CHAIR_VIDEO = 'assets/rocking-chair.mp4';
+    const ROCKING_CHAIR_LEAD_TIME = 1;
+
+    const LANGUAGES = [
+      { code: 'en', name: 'English', rtl: false },
+      { code: 'fr', name: 'Français', rtl: false },
+      { code: 'ru', name: 'Русский', rtl: false },
+      { code: 'ro', name: 'Română', rtl: false },
+      { code: 'hu', name: 'Magyar', rtl: false },
+      { code: 'es', name: 'Español', rtl: false },
+      { code: 'de', name: 'Deutsch', rtl: false },
+      { code: 'fa', name: 'فارسی', rtl: true },
+      { code: 'zh', name: '中文', rtl: false }
+    ];
+
+    const introVideo = document.getElementById('introVideo');
+    const legVideo = document.getElementById('legVideo');
+    const rockingChairVideo = document.getElementById('rockingChairVideo');
+    const introWrap = document.getElementById('introWrap');
+    const vpfFrame = document.getElementById('vpfFrame');
+    const rockingChairContainer = document.getElementById('rockingChairContainer');
+    const tapToStart = document.getElementById('tapToStart');
+    const textCol = document.getElementById('textCol');
+    const languagePicker = document.getElementById('languagePicker');
+    const lang1Select = document.getElementById('lang1Select');
+    const lang2Select = document.getElementById('lang2Select');
+
+    let rockingChairTimer = null;
+    let videoAwaitingTap = null;
+    let selectedLangs = [];
+    let legIndex = 0;
+    let currentSegments = [];
+    let currentSegmentIndex = -1;
+
+    function playWithFallback(video) {
+      const p = video.play();
+      if (p && typeof p.catch === 'function') {
+        p.catch(err => {
+          if (err && err.name === 'AbortError') return;
+          console.error('Playback blocked for', video.id, err);
+          videoAwaitingTap = video;
+          tapToStart.classList.add('visible');
+        });
+      }
+    }
+
+    function onTapToStart() {
+      tapToStart.classList.remove('visible');
+      const video = videoAwaitingTap || introVideo;
+      video.play().catch(err => {
+        console.error('Tap-triggered playback still failed for', video.id, err);
+        videoAwaitingTap = video;
+        tapToStart.classList.add('visible');
+      });
+    }
+
+    function startRockingChair() {
+      rockingChairContainer.classList.add('visible');
+      rockingChairVideo.play().catch(() => {});
+    }
+
+    function buildLanguagePicker() {
+      LANGUAGES.forEach(lang => {
+        const opt1 = document.createElement('option');
+        opt1.value = lang.code;
+        opt1.textContent = lang.name;
+        lang1Select.appendChild(opt1);
+      });
+      lang1Select.value = 'en';
+
+      const noneOpt = document.createElement('option');
+      noneOpt.value = '';
+      noneOpt.textContent = '— None —';
+      lang2Select.appendChild(noneOpt);
+      LANGUAGES.forEach(lang => {
+        const opt2 = document.createElement('option');
+        opt2.value = lang.code;
+        opt2.textContent = lang.name;
+        lang2Select.appendChild(opt2);
+      });
+    }
+
+    function onStartMovie() {
+      const l1 = lang1Select.value;
+      const l2 = lang2Select.value;
+      selectedLangs = l2 && l2 !== l1 ? [l1, l2] : [l1];
+
+      textCol.innerHTML = '';
+      selectedLangs.forEach(code => {
+        const lang = LANGUAGES.find(l => l.code === code);
+        const half = document.createElement('div');
+        half.className = 'caption-half' + (lang.rtl ? ' rtl' : '');
+        half.id = 'captionHalf-' + code;
+        half.innerHTML = '<div class="caption-text" id="captionText-' + code + '"></div>';
+        textCol.appendChild(half);
+      });
+
+      legIndex = 0;
+      playLeg(legIndex);
+    }
+
+    function playLeg(index) {
+      if (index >= LEGS.length) {
+        showTheEnd();
+        return;
+      }
+      const leg = LEGS[index];
+      currentSegments = leg.segments;
+      currentSegmentIndex = -1;
+      clearCaptions();
+
+      legVideo.removeEventListener('timeupdate', onLegTimeUpdate);
+      legVideo.removeEventListener('ended', onLegEndedHandler);
+      legVideo.src = leg.video;
+      legVideo.load();
+      playWithFallback(legVideo);
+      legVideo.addEventListener('timeupdate', onLegTimeUpdate);
+      legVideo.addEventListener('ended', onLegEndedHandler, { once: true });
+    }
+
+    function onLegEndedHandler() {
+      playLeg(legIndex + 1);
+      legIndex++;
+    }
+
+    // Continuous movie-style captions: no pausing — just swap the
+    // caption text in sync with playback time, like subtitles.
+    function onLegTimeUpdate() {
+      const t = legVideo.currentTime;
+      let idx = -1;
+      for (let i = 0; i < currentSegments.length; i++) {
+        if (t >= currentSegments[i].start) idx = i;
+      }
+      if (idx !== currentSegmentIndex) {
+        currentSegmentIndex = idx;
+        updateCaptions(idx >= 0 ? currentSegments[idx] : null);
+      }
+    }
+
+    function updateCaptions(segment) {
+      selectedLangs.forEach(code => {
+        const el = document.getElementById('captionText-' + code);
+        if (!el) return;
+        if (segment) {
+          el.textContent = segment[code] || segment.en;
+          el.classList.add('visible');
+        } else {
+          el.classList.remove('visible');
+        }
+      });
+    }
+
+    function clearCaptions() {
+      selectedLangs.forEach(code => {
+        const el = document.getElementById('captionText-' + code);
+        if (el) { el.textContent = ''; el.classList.remove('visible'); }
+      });
+    }
+
+    function showTheEnd() {
+      textCol.innerHTML =
+        '<div class="the-end">' +
+          '<h2>The End</h2>' +
+          '<button class="start-movie-btn" onclick="window.location.reload()">▶ Watch Again</button>' +
+        '</div>';
+    }
+
+    function initMovie() {
+      introVideo.addEventListener('error', () => console.error('introVideo failed to load', introVideo.error));
+      legVideo.addEventListener('error', () => console.error('legVideo failed to load', legVideo.error));
+      rockingChairVideo.addEventListener('error', () => console.error('rockingChairVideo failed to load', rockingChairVideo.error));
+
+      buildLanguagePicker();
+
+      rockingChairVideo.src = ROCKING_CHAIR_VIDEO;
+      introVideo.src = INTRO_VIDEO;
+      introVideo.addEventListener('loadedmetadata', () => {
+        const leadMs = Math.max(0, (introVideo.duration - ROCKING_CHAIR_LEAD_TIME) * 1000);
+        rockingChairTimer = setTimeout(startRockingChair, leadMs);
+      });
+      introVideo.addEventListener('ended', () => {
+        clearTimeout(rockingChairTimer);
+        if (!rockingChairContainer.classList.contains('visible')) startRockingChair();
+        introWrap.classList.add('hidden');
+        vpfFrame.classList.add('visible');
+      });
+      playWithFallback(introVideo);
+    }
+
+    window.onload = initMovie;
+  </script>
+</body>
+</html>
